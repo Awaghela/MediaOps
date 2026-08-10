@@ -111,6 +111,8 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - run: npm run build
+        name: Build backend
       - run: npm run db:migrate
         name: Run migrations
       - run: npm run db:seed
