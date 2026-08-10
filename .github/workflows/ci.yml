@@ -1,0 +1,165 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  backend-check:
+    name: Backend – Type Check & Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+        name: TypeScript check
+      - run: npm run build
+        name: Build dist
+
+  # ────────────────────────────────────────────────────────────────────────────
+  frontend-check:
+    name: Frontend – Type Check & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+        name: TypeScript check
+      - run: npm run build
+        name: Build for production
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  python-check:
+    name: Python Scripts – Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install flake8 black
+      - run: flake8 . --max-line-length=120 --exclude=__pycache__
+        name: Flake8 lint
+        continue-on-error: true
+      - run: black --check .
+        name: Black format check
+        continue-on-error: true
+
+  # ────────────────────────────────────────────────────────────────────────────
+  integration-test:
+    name: Integration – DB + API
+    runs-on: ubuntu-latest
+    needs: [backend-check]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mediaops
+          POSTGRES_PASSWORD: mediaops_test
+          POSTGRES_DB: mediaops_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://mediaops:mediaops_test@localhost:5432/mediaops_test
+      NODE_ENV: test
+      PORT: 3001
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run db:migrate
+        name: Run migrations
+      - run: npm run db:seed
+        name: Seed test data
+      - name: Smoke-test API endpoints
+        run: |
+          npm start &
+          sleep 4
+          curl -sf http://localhost:3001/health | grep '"status":"ok"'
+          curl -sf "http://localhost:3001/api/dashboard/stats" | grep '"totalPartners"'
+          curl -sf "http://localhost:3001/api/partners?limit=5" | grep '"data"'
+          curl -sf "http://localhost:3001/api/content?limit=5" | grep '"data"'
+          curl -sf "http://localhost:3001/api/issues?limit=5" | grep '"data"'
+          echo "✅ All smoke tests passed"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-railway:
+    name: Deploy Backend → Railway
+    runs-on: ubuntu-latest
+    needs: [integration-test, frontend-check]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy backend service
+        run: railway up --service backend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-vercel:
+    name: Deploy Frontend → Vercel
+    runs-on: ubuntu-latest
+    needs: [frontend-check]
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+      - run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
