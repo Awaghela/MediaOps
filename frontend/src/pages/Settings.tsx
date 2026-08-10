@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   User, Bell, LayoutDashboard, Key, Shield,
-  Save, Check, ChevronRight, Moon, Sun, Monitor,
+  Save, Check, ChevronRight,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
 
@@ -21,16 +21,16 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       onClick={() => onChange(!value)}
       style={{
         width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-        background: value ? 'linear-gradient(135deg, #7C3AED, #6D28D9)' : '#E5E7EB',
+        background: value ? 'linear-gradient(135deg, #6C5FDE, #9B8FFF)' : 'rgba(45,53,100,0.6)',
         position: 'relative', transition: 'background 0.2s',
-        boxShadow: value ? '0 2px 8px rgba(109,40,217,0.3)' : 'none',
+        boxShadow: value ? '0 2px 8px rgba(108,95,222,0.4)' : 'none',
       }}
     >
       <span style={{
         position: 'absolute', top: 2, borderRadius: '50%', width: 20, height: 20,
         background: '#fff', transition: 'left 0.2s',
         left: value ? 22 : 2,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
       }} />
     </button>
   );
@@ -47,19 +47,19 @@ function SaveButton({ saved }: { saved: boolean }) {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl p-6 mb-4" style={{ background: '#FFFFFF', border: '1px solid #EDE9FE', boxShadow: '0 2px 12px rgba(109,40,217,0.06)' }}>
-      <h2 className="text-sm font-semibold mb-5" style={{ color: '#1E1B4B' }}>{title}</h2>
+    <div className="rounded-xl p-6 mb-4" style={{ background: 'rgba(14,18,36,0.8)', border: '1px solid rgba(30,37,72,0.6)' }}>
+      <h2 className="text-sm font-semibold mb-5" style={{ color: '#CCD6F6' }}>{title}</h2>
       {children}
     </div>
   );
 }
-//settings
+
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between py-3" style={{ borderBottom: '1px solid #F5F3FF' }}>
+    <div className="flex items-start justify-between py-3" style={{ borderBottom: '1px solid rgba(30,37,72,0.6)' }}>
       <div>
-        <div className="text-sm font-medium" style={{ color: '#1E1B4B' }}>{label}</div>
-        {hint && <div className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>{hint}</div>}
+        <div className="text-sm font-medium" style={{ color: '#CCD6F6' }}>{label}</div>
+        {hint && <div className="text-xs mt-0.5" style={{ color: '#4A5580' }}>{hint}</div>}
       </div>
       <div className="ml-8 flex-shrink-0">{children}</div>
     </div>
@@ -74,23 +74,20 @@ function ProfileSection() {
     role: 'Operations Lead', timezone: 'America/New_York',
   });
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
 
   return (
     <>
       <SectionCard title="Personal Information">
         <div className="flex items-center gap-4 mb-6">
           <div className="flex items-center justify-center rounded-xl text-xl font-bold"
-            style={{ width: 64, height: 64, background: 'linear-gradient(135deg, #7C3AED, #6D28D9)', color: '#fff' }}>
+            style={{ width: 64, height: 64, background: 'linear-gradient(135deg, #6C5FDE, #9B8FFF)', color: '#fff' }}>
             AC
           </div>
           <div>
-            <div className="text-base font-semibold" style={{ color: '#1E1B4B' }}>{form.name}</div>
-            <div className="text-sm" style={{ color: '#9CA3AF' }}>{form.role}</div>
-            <button className="text-xs mt-1" style={{ color: '#7C3AED' }}>Change avatar</button>
+            <div className="text-base font-semibold" style={{ color: '#CCD6F6' }}>{form.name}</div>
+            <div className="text-sm" style={{ color: '#8892B0' }}>{form.role}</div>
+            <button className="text-xs mt-1" style={{ color: '#9B8FFF' }}>Change avatar</button>
           </div>
         </div>
 
@@ -100,7 +97,7 @@ function ProfileSection() {
           { key: 'role', label: 'Role', placeholder: 'Your role' },
         ].map(f => (
           <div key={f.key} className="mb-4">
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>{f.label}</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>{f.label}</label>
             <input
               className="input-field w-full"
               style={{ height: 38 }}
@@ -112,7 +109,7 @@ function ProfileSection() {
         ))}
 
         <div className="mb-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>Timezone</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>Timezone</label>
           <select className="input-field w-full" style={{ height: 38 }}
             value={form.timezone} onChange={e => setForm(p => ({ ...p, timezone: e.target.value }))}>
             <option value="America/New_York">Eastern Time (ET)</option>
@@ -203,7 +200,7 @@ function DashboardSection() {
     <>
       <SectionCard title="Display Preferences">
         <div className="mb-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>Default Landing Page</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>Default Landing Page</label>
           <select className="input-field w-full" style={{ height: 38 }}
             value={prefs.defaultPage} onChange={e => setPrefs(p => ({ ...p, defaultPage: e.target.value }))}>
             <option value="/">Overview Dashboard</option>
@@ -213,9 +210,8 @@ function DashboardSection() {
             <option value="/workflow">Workflow</option>
           </select>
         </div>
-
         <div className="mb-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>Auto-refresh Interval</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>Auto-refresh Interval</label>
           <select className="input-field w-full" style={{ height: 38 }}
             value={prefs.refreshInterval} onChange={e => setPrefs(p => ({ ...p, refreshInterval: e.target.value }))}>
             <option value="0">Off</option>
@@ -225,9 +221,8 @@ function DashboardSection() {
             <option value="300">Every 5 minutes</option>
           </select>
         </div>
-
         <div className="mb-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>Default Page Size</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>Default Page Size</label>
           <select className="input-field w-full" style={{ height: 38 }}
             value={prefs.defaultLimit} onChange={e => setPrefs(p => ({ ...p, defaultLimit: e.target.value }))}>
             <option value="10">10 rows</option>
@@ -272,19 +267,19 @@ function ApiSection() {
           { label: 'Content', value: '/content' },
           { label: 'Issues', value: '/issues' },
         ].map(e => (
-          <div key={e.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid #F5F3FF' }}>
-            <span className="text-xs font-medium" style={{ color: '#6B7280' }}>{e.label}</span>
-            <code className="text-xs px-2 py-1 rounded" style={{ background: '#F5F3FF', color: '#7C3AED' }}>{e.value}</code>
+          <div key={e.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid rgba(30,37,72,0.6)' }}>
+            <span className="text-xs font-medium" style={{ color: '#8892B0' }}>{e.label}</span>
+            <code className="text-xs px-2 py-1 rounded" style={{ background: 'rgba(108,95,222,0.12)', color: '#9B8FFF' }}>{e.value}</code>
           </div>
         ))}
       </SectionCard>
 
       <SectionCard title="API Key">
-        <p className="text-xs mb-4" style={{ color: '#9CA3AF' }}>Use this key to authenticate requests to the MediaOps API.</p>
+        <p className="text-xs mb-4" style={{ color: '#8892B0' }}>Use this key to authenticate requests to the MediaOps API.</p>
         <div className="flex items-center gap-2 mb-4">
           <code
             className="flex-1 px-3 py-2 rounded-lg text-xs font-mono"
-            style={{ background: '#F5F3FF', color: '#7C3AED', border: '1px solid #EDE9FE' }}
+            style={{ background: 'rgba(20,24,48,0.8)', color: '#9B8FFF', border: '1px solid rgba(45,53,100,0.6)' }}
           >
             {revealed ? fakeKey : '••••••••••••••••••••••••••••••••'}
           </code>
@@ -295,7 +290,7 @@ function ApiSection() {
             Copy
           </button>
         </div>
-        <button className="btn-ghost text-xs" style={{ color: '#EF4444', borderColor: '#FCA5A5' }}>
+        <button className="btn-ghost text-xs" style={{ color: '#FF7090', borderColor: 'rgba(255,77,109,0.3)' }}>
           Regenerate Key
         </button>
       </SectionCard>
@@ -317,7 +312,7 @@ function SecuritySection() {
           <Toggle value={twoFA} onChange={setTwoFA} />
         </Field>
         <div className="mt-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>Session Timeout</label>
+          <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>Session Timeout</label>
           <select className="input-field" style={{ height: 38, width: 200 }}
             value={sessionTimeout} onChange={e => setSessionTimeout(e.target.value)}>
             <option value="60">1 hour</option>
@@ -331,7 +326,7 @@ function SecuritySection() {
       <SectionCard title="Change Password">
         {['Current Password', 'New Password', 'Confirm New Password'].map(label => (
           <div key={label} className="mb-4">
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#6B7280' }}>{label}</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8892B0' }}>{label}</label>
             <input type="password" className="input-field w-full" style={{ height: 38 }} placeholder="••••••••" />
           </div>
         ))}
@@ -342,15 +337,23 @@ function SecuritySection() {
           { device: 'MacBook Air', location: 'Erie, Colorado', time: 'Active now', current: true },
           { device: 'iPhone 15', location: 'Erie, Colorado', time: '2 hours ago', current: false },
         ].map(s => (
-          <div key={s.device} className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid #F5F3FF' }}>
+          <div key={s.device} className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid rgba(30,37,72,0.6)' }}>
             <div>
-              <div className="text-sm font-medium flex items-center gap-2" style={{ color: '#1E1B4B' }}>
+              <div className="text-sm font-medium flex items-center gap-2" style={{ color: '#CCD6F6' }}>
                 {s.device}
-                {s.current && <span className="badge" style={{ background: '#D1FAE5', color: '#065F46', border: '1px solid #6EE7B7' }}>Current</span>}
+                {s.current && (
+                  <span className="badge" style={{ background: 'rgba(34,237,216,0.1)', color: '#22EDD8', border: '1px solid rgba(34,237,216,0.3)' }}>
+                    Current
+                  </span>
+                )}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>{s.location} · {s.time}</div>
+              <div className="text-xs mt-0.5" style={{ color: '#4A5580' }}>{s.location} · {s.time}</div>
             </div>
-            {!s.current && <button className="btn-ghost text-xs" style={{ color: '#EF4444', borderColor: '#FCA5A5' }}>Revoke</button>}
+            {!s.current && (
+              <button className="btn-ghost text-xs" style={{ color: '#FF7090', borderColor: 'rgba(255,77,109,0.3)' }}>
+                Revoke
+              </button>
+            )}
           </div>
         ))}
       </SectionCard>
@@ -361,6 +364,8 @@ function SecuritySection() {
     </>
   );
 }
+
+// ─── Main Settings Page ───────────────────────────────────────────────────────
 
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 export function Settings() {
@@ -378,21 +383,21 @@ export function Settings() {
     <div>
       <Header title="Settings" subtitle="Manage your account and workspace preferences" />
       <div className="p-6 flex gap-6">
-
-        {/* Sidebar nav */}
-        <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 200, background: '#FFFFFF', border: '1px solid #EDE9FE', alignSelf: 'flex-start' }}>
+        <div
+          className="flex-shrink-0 rounded-xl overflow-hidden"
+          style={{ width: 200, background: 'rgba(14,18,36,0.8)', border: '1px solid rgba(30,37,72,0.6)', alignSelf: 'flex-start' }}
+        >
           {SECTIONS.map(s => (
             <button
               key={s.id}
               onClick={() => setActive(s.id)}
               className="w-full flex items-center justify-between px-4 py-3 text-sm transition-all"
               style={{
-                background: active === s.id ? '#F5F3FF' : 'transparent',
-                color: active === s.id ? '#7C3AED' : '#6B7280',
+                background: active === s.id ? 'rgba(108,95,222,0.15)' : 'transparent',
+                color: active === s.id ? '#9B8FFF' : '#8892B0',
                 fontWeight: active === s.id ? 600 : 400,
-                borderBottom: '1px solid #F5F3FF',
                 cursor: 'pointer', border: 'none', borderBottomStyle: 'solid',
-                borderBottomWidth: 1, borderBottomColor: '#F5F3FF',
+                borderBottomWidth: 1, borderBottomColor: 'rgba(30,37,72,0.6)',
                 textAlign: 'left',
               }}
             >
@@ -404,8 +409,6 @@ export function Settings() {
             </button>
           ))}
         </div>
-
-        {/* Content */}
         <div className="flex-1 min-w-0">
           {CONTENT[active]}
         </div>

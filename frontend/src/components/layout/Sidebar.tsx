@@ -12,6 +12,7 @@ const NAV = [
   { to: '/issues',    icon: AlertTriangle,   label: 'Issues' },
   { to: '/workflow',  icon: GitBranch,       label: 'Workflow' },
   { to: '/reports',   icon: BarChart2,       label: 'Reports' },
+  { to: '/settings',  icon: Settings,        label: 'Settings' },
 ];
 
 export function Sidebar() {
@@ -58,10 +59,6 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-3 pb-4" style={{ borderTop: '1px solid rgba(30,37,72,0.6)' }}>
-        <div className="nav-item mt-3">
-          <Settings size={16} />
-          Settings
-        </div>
         <div className="px-2 mt-3">
           <div className="text-xs mb-1" style={{ color: '#4A5580' }}>System Status</div>
           <div className="flex items-center gap-1.5">
