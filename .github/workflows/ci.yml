@@ -117,6 +117,7 @@ jobs:
         name: Run migrations
       - run: npm run db:seed
         name: Seed test data
+        timeout-minutes: 2
       - name: Smoke-test API endpoints
         run: |
           npm start &
@@ -139,7 +140,7 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
       - name: Deploy backend service
-        run: railway up --service backend --detach
+        run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
