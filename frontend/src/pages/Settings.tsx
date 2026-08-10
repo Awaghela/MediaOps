@@ -53,7 +53,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
     </div>
   );
 }
-
+//settings
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between py-3" style={{ borderBottom: '1px solid #F5F3FF' }}>
