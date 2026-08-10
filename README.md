@@ -1,215 +1,122 @@
 # MediaOps — Internal Operations Dashboard
 
-A full-stack operations dashboard for tracking partner onboarding status, content launch blockers, issue ownership, troubleshooting notes, and workflow progress.
+A production-grade internal dashboard built to bring visibility into partner onboarding pipelines, content launch workflows, and operational issue tracking across a media organization. Built with React, TypeScript, Node.js, PostgreSQL, and Python — deployed on Railway and Vercel.
+
+---
+
+## What It Does
+
+Media operations teams manage hundreds of partner relationships, each with content in various stages of review, approval, and launch. Without a centralized tool, blockers go unnoticed, issue ownership is unclear, and reporting is manual. MediaOps solves this by giving ops teams a single place to:
+
+- Track every partner's onboarding progress from pending to completed
+- Monitor content across 7 workflow stages with real-time blocker visibility
+- Own and resolve issues with severity triage, assignment, and escalation
+- Pull partner-level reports showing workflow health and issue breakdowns
+- Automate escalation of overdue critical issues and approval of completed pipelines
+
+---
+
+## Scale
+
+- **300 partner-content records** across 20 partners — 15 content items per partner spanning series, movies, documentaries, podcasts, live events, and shorts
+- **35 workflow status-change cases** captured in full audit history — covering status progressions, missing field scenarios, repeated blockers, and escalation paths
+- **7-step content pipeline** per item: Metadata Review → Rights Clearance → Quality Check → Legal Approval → Scheduling → Technical Encoding → Final Publish
+- **Full issue lifecycle** modeled: open → in_progress → escalated → resolved, with severity levels (critical / high / medium / low) and ownership tracking
+
+---
 
 ## Tech Stack
 
-| Layer      | Technology                          |
-|------------|-------------------------------------|
-| Frontend   | React 18, TypeScript, Vite, Tailwind CSS, Recharts, Framer Motion |
-| Backend    | Node.js, Express, TypeScript        |
-| Database   | PostgreSQL 16                       |
-| Automation | Python 3.11, psycopg2               |
-| Infra      | Docker, Railway (backend), Vercel (frontend) |
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Recharts |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL 16 with triggers, indexes, and audit history |
+| Automation | Python 3.11 with psycopg2 |
+| Deployment | Railway (API + DB), Vercel (frontend) |
+| CI/CD | GitHub Actions — type check, build, integration test, deploy |
 
 ---
 
-## Project Structure
+## Features
 
-```
-mediaops/
-├── backend/
-│   ├── src/
-│   │   ├── controllers/        # Business logic (dashboard, partners, content, issues)
-│   │   ├── db/
-│   │   │   ├── connection.ts   # pg Pool + query helper
-│   │   │   ├── migrate.ts      # Schema migrations (run once)
-│   │   │   └── seed.ts         # 300 partner-content records, 35 workflow cases
-│   │   ├── routes/index.ts     # 15 REST endpoints
-│   │   ├── types/index.ts      # Shared TS interfaces
-│   │   └── index.ts            # Express server
-│   ├── Dockerfile
-│   └── package.json
-│
-├── frontend/
-│   ├── src/
-│   │   ├── api/client.ts       # Axios API layer
-│   │   ├── components/
-│   │   │   ├── layout/         # Sidebar, Header, AppLayout
-│   │   │   └── ui/             # StatCard, StatusBadge, ProgressBar, Skeleton, Toast
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx   # KPI cards + 5 charts
-│   │   │   ├── Partners.tsx    # Searchable partner table
-│   │   │   ├── PartnerDetail.tsx  # Drill-down: content, issues, workflow tabs
-│   │   │   ├── ContentPage.tsx # Expandable content cards
-│   │   │   ├── Issues.tsx      # Issue grid + edit modal
-│   │   │   ├── Workflow.tsx    # Per-content step timelines
-│   │   │   └── Reports.tsx     # Partner analytics + charts
-│   │   ├── types/index.ts
-│   │   └── utils/status.ts     # Status color maps + formatters
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── vercel.json
-│
-├── scripts/
-│   ├── seed_data.py            # Bulk-insert 300 records via psycopg2
-│   ├── automation.py           # Escalation, auto-approval, stale flags, weekly report
-│   └── requirements.txt
-│
-├── docker-compose.yml
-├── railway.toml
-└── .github/workflows/ci.yml
-```
+**Dashboard** — Eight animated KPI cards with count-up animations, area charts for weekly content launch trends, pie chart for onboarding status distribution, bar charts for issue type breakdown, and a live activity feed showing recent status changes.
+
+**Partner Management** — Searchable and filterable partner table with inline status updates, tier badges, content counts, and open issue indicators. Drill down into any partner for a full view of their content, issues, workflow completion radar chart, and issue severity breakdown.
+
+**Content Tracking** — Expandable content rows showing priority indicators, workflow progress bars, blocker counts, and launch dates. Filter by status, priority, and content type. Update status and priority inline without leaving the list.
+
+**Issue Tracker** — Card-based issue grid sorted by severity. Filter by type, severity, status, and assigned owner. Click any issue to open a detail modal with full edit capability — update status, reassign owner, and add resolution notes.
+
+**Workflow View** — Per-content workflow cards showing all 7 pipeline steps with completion status, assigned team member, and due dates. Progress rings reflect real completion percentages.
+
+**Reports** — Select any partner to generate a live analytics report: summary KPIs, issue breakdown by type and severity, and per-step workflow health progress bars.
 
 ---
 
-## Database Schema
+## API
 
-```sql
-partners          id, name, slug, tier, region, contact_*, onboarding_status, notes
-content           id, partner_id, title, content_type, genre, launch_date, status, priority, blocker_count
-issues            id, content_id, partner_id, issue_type, severity, title, owner, status, due_date
-workflow_steps    id, content_id, step_name, step_order, status, assigned_to, due_date, completed_at
-status_history    id, entity_type, entity_id, old_status, new_status, changed_by, reason
+The backend exposes 15 REST endpoints covering the full data model. All list endpoints support `search`, `status`, `page`, and `limit` query parameters.
+
+```
+GET    /health
+GET    /api/dashboard/stats
+GET    /api/dashboard/timeline
+GET    /api/partners
+POST   /api/partners
+GET    /api/partners/:id
+PATCH  /api/partners/:id
+GET    /api/content
+PATCH  /api/content/:id
+GET    /api/content/:id/workflow
+PATCH  /api/workflow/:id
+GET    /api/issues
+POST   /api/issues
+PATCH  /api/issues/:id
+GET    /api/reports/partner/:id
 ```
 
-**Metrics achieved:**
-- ✅ 300 partner-content records (20 partners × 15 content each)
-- ✅ 35 workflow status-change cases tracked in `status_history`
-- ✅ Full issue lifecycle: open → in_progress → escalated / resolved
-- ✅ 7-step workflow pipeline per content item
+Every status change on partners, content, and issues is written to `status_history` with the previous state, new state, actor, and reason — giving a full audit trail.
 
 ---
 
-## Quick Start (Local)
+## Automation Scripts
 
-### Prerequisites
-- Node.js 20+, Docker Desktop, Python 3.11+
+Four Python automation tasks run against the live database:
 
 ```bash
-# 1. Clone and install
-git clone https://github.com/you/mediaops
-cd mediaops
+python automation.py --task escalate   # auto-escalate overdue critical/high issues
+python automation.py --task complete   # approve content where all 7 steps are done
+python automation.py --task flag       # surface content blocked for more than N days
+python automation.py --task report     # print weekly ops summary to stdout
+```
+
+All tasks support `--dry-run` to preview changes before committing.
+
+---
+
+## Local Setup
+
+**Prerequisites:** Node.js 20+, Docker Desktop, Python 3.11+
+
+```bash
+# Install all dependencies
 npm run install:all
 
-# 2. Start Postgres via Docker
-npm run docker:up
+# Start Postgres
+docker-compose up postgres -d
 
-# 3. Migrate + seed (TypeScript seeder)
-cp backend/.env.example backend/.env
-npm run db:reset
+# Configure environment
+echo 'DATABASE_URL=postgresql://mediaops:mediaops_dev@localhost:5433/mediaops
+PORT=3001
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173' > backend/.env
 
-# 4. Start dev servers (runs both concurrently)
+# Run migrations and seed 300 records
+sleep 4 && npm run db:reset
+
+# Start backend + frontend
 npm run dev
-# → Backend:  http://localhost:3001
-# → Frontend: http://localhost:5173
 ```
 
-### Python Seeder (alternative)
-```bash
-cd scripts
-pip install -r requirements.txt
-DATABASE_URL=postgresql://mediaops:mediaops_dev@localhost:5432/mediaops python seed_data.py
-```
-
-### Automation Scripts
-```bash
-cd scripts
-# Dry-run all automation tasks
-python automation.py --dry-run --task all
-
-# Run a specific task
-python automation.py --task escalate     # escalate overdue critical issues
-python automation.py --task complete     # auto-approve fully-completed content
-python automation.py --task flag --days 7 # flag content blocked > 7 days
-python automation.py --task report       # print weekly summary
-```
-
----
-
-## API Endpoints
-
-| Method | Path                          | Description                    |
-|--------|-------------------------------|--------------------------------|
-| GET    | `/health`                     | Health check                   |
-| GET    | `/api/dashboard/stats`        | All KPI metrics + charts data  |
-| GET    | `/api/dashboard/timeline`     | Weekly launch activity         |
-| GET    | `/api/partners`               | Partners list (filter, search, paginate) |
-| POST   | `/api/partners`               | Create partner                 |
-| GET    | `/api/partners/:id`           | Partner detail + content + issues |
-| PATCH  | `/api/partners/:id`           | Update onboarding status, notes |
-| GET    | `/api/content`                | Content list (filter, search, paginate) |
-| PATCH  | `/api/content/:id`            | Update status, priority        |
-| GET    | `/api/content/:id/workflow`   | Steps for a content item       |
-| PATCH  | `/api/workflow/:id`           | Update step status             |
-| GET    | `/api/issues`                 | Issues list (filter, search)   |
-| POST   | `/api/issues`                 | Create issue                   |
-| PATCH  | `/api/issues/:id`             | Resolve / update issue         |
-| GET    | `/api/reports/partner/:id`    | Partner-level analytics        |
-
-All list endpoints support `?search=&status=&page=&limit=`.
-
----
-
-## Deployment
-
-### Railway (Backend + DB)
-
-1. Push to GitHub
-2. New Railway project → **Deploy from GitHub repo**
-3. Add **PostgreSQL** plugin → Railway auto-sets `DATABASE_URL`
-4. Set environment variables:
-   ```
-   NODE_ENV=production
-   FRONTEND_URL=https://your-app.vercel.app
-   PORT=3001
-   ```
-5. Railway uses `backend/Dockerfile` automatically
-6. After first deploy, run migrations via Railway CLI:
-   ```bash
-   railway run --service backend npm run db:migrate
-   railway run --service backend npm run db:seed
-   ```
-
-### Vercel (Frontend)
-
-```bash
-cd frontend
-npx vercel --prod
-# Set env variable: VITE_API_URL=https://your-backend.railway.app
-```
-
-Or connect the repo in Vercel dashboard:
-- Root Directory: `frontend`
-- Build Command: `npm run build`
-- Output Directory: `dist`
-- Env: `VITE_API_URL=https://your-backend.railway.app`
-
-### CI/CD Secrets (GitHub Actions)
-
-| Secret             | Description                     |
-|--------------------|---------------------------------|
-| `RAILWAY_TOKEN`    | Railway project token           |
-| `VERCEL_TOKEN`     | Vercel auth token               |
-| `VERCEL_ORG_ID`    | Vercel org ID                   |
-| `VERCEL_PROJECT_ID`| Vercel project ID               |
-| `VITE_API_URL`     | Backend URL for production build |
-
----
-
-## UI Design System
-
-| Token    | Value      | Usage                      |
-|----------|------------|----------------------------|
-| Base     | `#080C18`  | Page background            |
-| Surface  | `#141830`  | Cards                      |
-| Elevated | `#1C2240`  | Hover / elevated surfaces  |
-| Violet   | `#6C5FDE`  | Primary accent             |
-| Cyan     | `#22EDD8`  | Success / live             |
-| Rose     | `#FF4D6D`  | Errors / critical          |
-| Amber    | `#FFD166`  | Warnings / pending         |
-| Text     | `#CCD6F6`  | Primary text               |
-| Muted    | `#8892B0`  | Secondary text             |
-| Ghost    | `#4A5580`  | Placeholder / disabled     |
-
-Animation: `float-up` entrance, count-up stat cards, shimmer skeletons, progress bar transitions.
+Frontend → `http://localhost:5173` · API → `http://localhost:3001` · Health → `http://localhost:3001/health`
