@@ -130,23 +130,6 @@ jobs:
           echo "✅ All smoke tests passed"
 
   # ────────────────────────────────────────────────────────────────────────────
-  deploy-railway:
-    name: Deploy Backend → Railway
-    runs-on: ubuntu-latest
-    needs: [integration-test, frontend-check]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-      - name: Deploy backend service
-        run: railway up --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Railway CLI version
-        run: railway --version
-
-  # ────────────────────────────────────────────────────────────────────────────
   deploy-vercel:
     name: Deploy Frontend → Vercel
     runs-on: ubuntu-latest
