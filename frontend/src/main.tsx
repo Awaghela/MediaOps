@@ -12,6 +12,7 @@ import { Issues } from './pages/Issues';
 import { Workflow } from './pages/Workflow';
 import { Reports } from './pages/Reports';
 import { ToastProvider } from './components/ui/Toast';
+import { Settings } from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/workflow" element={<Workflow />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </AppLayout>
       </BrowserRouter>
