@@ -1,4 +1,4 @@
-import { pool, query } from './connection';
+import { pool } from './connection';
 
 const PARTNERS = [
   { name: 'Apex Studios', region: 'North America', tier: 'premium' },
@@ -27,11 +27,7 @@ const CONTENT_TITLES = [
   'The Last Signal', 'Midnight Protocol', 'Edge of Tomorrow', 'Dark Waters Rising',
   'Neon City Chronicles', 'The Final Frontier', 'Beneath the Surface', 'Crimson Dawn',
   'The Quantum Files', 'Shadow Protocol', 'Beyond Limits', 'The Reckoning',
-  'Starfall', 'Iron Resolve', 'The Long Game', 'Breaking Ground',
-  'Into the Void', 'Last Stand', 'The Power Play', 'Undercurrent',
-  'Catalyst', 'Meridian', 'The Circuit', 'Resonance',
-  'Fallout Protocol', 'Zero Hour', 'Code Red', 'The Drift',
-  'Firestorm', 'Apex Theory',
+  'Starfall', 'Iron Resolve', 'The Long Game',
 ];
 
 const CONTENT_TYPES = ['series', 'movie', 'documentary', 'short', 'live_event', 'podcast'];
@@ -47,126 +43,150 @@ const STEP_NAMES = ['Metadata Review', 'Rights Clearance', 'Quality Check', 'Leg
 
 function rand<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-function futureDate(daysAhead: number) {
-  const d = new Date(); d.setDate(d.getDate() + daysAhead); return d.toISOString().split('T')[0];
-}
-function pastDate(daysAgo: number) {
-  const d = new Date(); d.setDate(d.getDate() - daysAgo); return d.toISOString().split('T')[0];
-}
+function futureDate(d: number) { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().split('T')[0]; }
+function pastDate(d: number) { const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString().split('T')[0]; }
 function slug(name: string) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 
+// Build VALUES string for bulk insert: ($1,$2,...),($n+1,$n+2,...) 
+function buildValues(rows: unknown[][], colCount: number): [string, unknown[]] {
+  const flat: unknown[] = [];
+  const placeholders = rows.map((row, i) => {
+    const start = i * colCount + 1;
+    row.forEach(v => flat.push(v));
+    return '(' + Array.from({ length: colCount }, (_, j) => `$${start + j}`).join(',') + ')';
+  });
+  return [placeholders.join(','), flat];
+}
+
 async function seed() {
-  console.log('🌱 Seeding database...');
+  const client = await pool.connect();
+  console.log('🌱 Seeding database (bulk mode)...');
 
-  await query('DELETE FROM status_history');
-  await query('DELETE FROM workflow_steps');
-  await query('DELETE FROM issues');
-  await query('DELETE FROM content');
-  await query('DELETE FROM partners');
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM status_history');
+    await client.query('DELETE FROM workflow_steps');
+    await client.query('DELETE FROM issues');
+    await client.query('DELETE FROM content');
+    await client.query('DELETE FROM partners');
 
-  // Insert 20 partners
-  const partnerIds: string[] = [];
-  for (const p of PARTNERS) {
-    const res = await query(
+    // ── Partners (20 rows, 1 query) ──────────────────────────────────────
+    const partnerRows = PARTNERS.map(p => [
+      p.name, slug(p.name), p.tier, p.region,
+      `ops@${slug(p.name)}.com`, rand(OWNERS), rand(ONBOARDING_STATUSES),
+      Math.random() > 0.5 ? `Onboarded via ${rand(['direct','referral','agency'])} channel.` : null,
+    ]);
+    const [pVals, pFlat] = buildValues(partnerRows, 8);
+    const partnerRes = await client.query(
       `INSERT INTO partners (name, slug, tier, region, contact_email, contact_name, onboarding_status, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-      [
-        p.name, slug(p.name), p.tier, p.region,
-        `ops@${slug(p.name)}.com`,
-        rand(OWNERS),
-        rand(ONBOARDING_STATUSES),
-        Math.random() > 0.5 ? `Partner onboarded via ${rand(['direct','referral','agency'])} channel.` : null,
-      ]
+       VALUES ${pVals} RETURNING id`,
+      pFlat
     );
-    partnerIds.push(res.rows[0].id);
-  }
-  console.log(`  ✓ ${partnerIds.length} partners`);
+    const partnerIds = partnerRes.rows.map((r: { id: string }) => r.id);
+    console.log(`  ✓ ${partnerIds.length} partners`);
 
-  // Insert 300 content records (15 per partner)
-  const contentIds: string[] = [];
-  for (let i = 0; i < partnerIds.length; i++) {
-    const partnerId = partnerIds[i];
-    for (let j = 0; j < 15; j++) {
-      const title = `${CONTENT_TITLES[j % CONTENT_TITLES.length]} ${j > 14 ? 'II' : ''}`;
-      const status = rand(STATUSES);
-      const blockers = status === 'blocked' ? randInt(1, 5) : 0;
-      const res = await query(
-        `INSERT INTO content (partner_id, title, content_type, genre, launch_date, status, priority, blocker_count)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-        [
-          partnerId, title, rand(CONTENT_TYPES), rand(GENRES),
-          Math.random() > 0.3 ? (Math.random() > 0.5 ? futureDate(randInt(7, 180)) : pastDate(randInt(1, 90))) : null,
-          status, rand(PRIORITIES), blockers,
-        ]
-      );
-      contentIds.push(res.rows[0].id);
-    }
-  }
-  console.log(`  ✓ ${contentIds.length} content records`);
-
-  // Insert issues for ~60% of content
-  let issueCount = 0;
-  for (const contentId of contentIds) {
-    if (Math.random() > 0.4) {
-      const numIssues = randInt(1, 4);
-      for (let k = 0; k < numIssues; k++) {
-        const status = rand(ISSUE_STATUSES);
-        await query(
-          `INSERT INTO issues (content_id, partner_id, issue_type, severity, title, description, owner, status, notes, due_date, resolved_at)
-           VALUES ($1,(SELECT partner_id FROM content WHERE id=$1),$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-          [
-            contentId, rand(ISSUE_TYPES), rand(SEVERITIES),
-            `${rand(ISSUE_TYPES).replace('_',' ')} issue for content`,
-            `Detailed description of this issue requiring attention from the operations team.`,
-            rand(OWNERS), status,
-            Math.random() > 0.4 ? 'Follow-up needed with partner contact.' : null,
-            Math.random() > 0.5 ? futureDate(randInt(1, 30)) : null,
-            status === 'resolved' ? pastDate(randInt(1, 14)) : null,
-          ]
-        );
-        issueCount++;
+    // ── Content (300 rows, 1 query) ──────────────────────────────────────
+    const contentRows: unknown[][] = [];
+    for (const pid of partnerIds) {
+      for (let j = 0; j < 15; j++) {
+        const status = rand(STATUSES);
+        contentRows.push([
+          pid,
+          CONTENT_TITLES[j % CONTENT_TITLES.length],
+          rand(CONTENT_TYPES), rand(GENRES),
+          Math.random() > 0.3 ? (Math.random() > 0.5 ? futureDate(randInt(7,180)) : pastDate(randInt(1,90))) : null,
+          status, rand(PRIORITIES),
+          status === 'blocked' ? randInt(1,5) : 0,
+        ]);
       }
     }
-  }
-  console.log(`  ✓ ${issueCount} issues`);
+    const [cVals, cFlat] = buildValues(contentRows, 8);
+    const contentRes = await client.query(
+      `INSERT INTO content (partner_id, title, content_type, genre, launch_date, status, priority, blocker_count)
+       VALUES ${cVals} RETURNING id`,
+      cFlat
+    );
+    const contentIds = contentRes.rows.map((r: { id: string }) => r.id);
+    console.log(`  ✓ ${contentIds.length} content records`);
 
-  // Insert workflow steps for all content
-  let stepCount = 0;
-  for (const contentId of contentIds) {
+    // ── Issues (~500 rows, 1 query) ──────────────────────────────────────
+    // Pre-fetch partner_ids for content in one query
+    const contentPartnerMap: Record<string, string> = {};
+    const cpRes = await client.query('SELECT id, partner_id FROM content');
+    for (const row of cpRes.rows) contentPartnerMap[row.id] = row.partner_id;
+
+    const issueRows: unknown[][] = [];
+    for (const cid of contentIds) {
+      if (Math.random() > 0.4) {
+        for (let k = 0; k < randInt(1, 3); k++) {
+          const status = rand(ISSUE_STATUSES);
+          issueRows.push([
+            cid, contentPartnerMap[cid],
+            rand(ISSUE_TYPES), rand(SEVERITIES),
+            `${rand(ISSUE_TYPES).replace('_',' ')} issue`,
+            'Requires ops team review and partner coordination.',
+            rand(OWNERS), status,
+            Math.random() > 0.4 ? 'Follow-up needed.' : null,
+            Math.random() > 0.5 ? futureDate(randInt(1,30)) : null,
+            status === 'resolved' ? pastDate(randInt(1,14)) : null,
+          ]);
+        }
+      }
+    }
+    const [iVals, iFlat] = buildValues(issueRows, 11);
+    await client.query(
+      `INSERT INTO issues (content_id, partner_id, issue_type, severity, title, description, owner, status, notes, due_date, resolved_at)
+       VALUES ${iVals}`,
+      iFlat
+    );
+    console.log(`  ✓ ${issueRows.length} issues`);
+
+    // ── Workflow steps (2100 rows, batched in 7 queries, 1 per step) ─────
     for (let s = 0; s < STEP_NAMES.length; s++) {
-      const done = Math.random() > 0.4;
-      await query(
-        `INSERT INTO workflow_steps (content_id, step_name, step_order, status, assigned_to, due_date, completed_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [
-          contentId, STEP_NAMES[s], s + 1,
-          done ? 'completed' : rand(['pending', 'in_progress', 'blocked']),
+      const stepRows = contentIds.map(cid => {
+        const done = Math.random() > 0.4;
+        return [
+          cid, STEP_NAMES[s], s + 1,
+          done ? 'completed' : rand(['pending','in_progress','blocked']),
           rand(OWNERS),
           futureDate(randInt(s * 7, (s + 1) * 14)),
-          done ? pastDate(randInt(1, 30)) : null,
-        ]
-      );
-      stepCount++;
-    }
-  }
-  console.log(`  ✓ ${stepCount} workflow steps`);
-
-  // Status history for 35 workflow cases
-  const entityIds = contentIds.slice(0, 35);
-  for (const eid of entityIds) {
-    const statuses = ['draft', 'in_review', 'approved', 'scheduled'];
-    for (let i = 1; i < statuses.length; i++) {
-      await query(
-        `INSERT INTO status_history (entity_type, entity_id, old_status, new_status, changed_by, reason)
-         VALUES ('content',$1,$2,$3,$4,$5)`,
-        [eid, statuses[i - 1], statuses[i], rand(OWNERS), 'Status progression during onboarding']
+          done ? pastDate(randInt(1,30)) : null,
+        ];
+      });
+      const [wVals, wFlat] = buildValues(stepRows, 7);
+      await client.query(
+        `INSERT INTO workflow_steps (content_id, step_name, step_order, status, assigned_to, due_date, completed_at)
+         VALUES ${wVals}`,
+        wFlat
       );
     }
-  }
-  console.log(`  ✓ 35 workflow status cases tracked`);
+    console.log(`  ✓ ${contentIds.length * STEP_NAMES.length} workflow steps`);
 
-  console.log('\n✅ Seed complete!');
-  await pool.end();
+    // ── Status history (35 cases, 1 query) ───────────────────────────────
+    const histRows: unknown[][] = [];
+    const wfStatuses = ['draft','in_review','approved','scheduled'];
+    for (const cid of contentIds.slice(0,35)) {
+      for (let i = 1; i < wfStatuses.length; i++) {
+        histRows.push(['content', cid, wfStatuses[i-1], wfStatuses[i], rand(OWNERS), 'Status progression during onboarding']);
+      }
+    }
+    const [hVals, hFlat] = buildValues(histRows, 6);
+    await client.query(
+      `INSERT INTO status_history (entity_type, entity_id, old_status, new_status, changed_by, reason)
+       VALUES ${hVals}`,
+      hFlat
+    );
+    console.log(`  ✓ 35 workflow status cases`);
+
+    await client.query('COMMIT');
+    console.log('\n✅ Seed complete!');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+    await pool.end();
+  }
 }
 
 seed().catch((e) => { console.error(e); process.exit(1); });

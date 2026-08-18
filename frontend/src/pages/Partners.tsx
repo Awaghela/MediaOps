@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Partner } from '../types';
 import { formatDate, workflowPercent } from '../utils/status';
+import { AddPartnerModal } from '../components/ui/AddPartnerModal';
 
 const ONBOARDING_STATUSES = ['pending', 'in_progress', 'review', 'blocked', 'completed'];
 const TIERS = ['premium', 'standard', 'basic'];
@@ -19,7 +20,7 @@ export function Partners() {
   const [statusFilter, setStatusFilter] = useState('');
   const [tierFilter, setTierFilter] = useState('');
   const [page, setPage] = useState(1);
-
+  const [addOpen, setAddOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ['partners', search, statusFilter, tierFilter, page],
     queryFn: () => getPartners({ search, status: statusFilter || undefined, tier: tierFilter || undefined, page, limit: 15 }),
@@ -77,7 +78,7 @@ export function Partners() {
 
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs" style={{ color: '#4A5580' }}>{total} results</span>
-            <button className="btn-primary flex items-center gap-1.5">
+            <button className="btn-primary flex items-center gap-1.5" onClick={() => setAddOpen(true)}>
               <Plus size={14} /> Add Partner
             </button>
           </div>
@@ -217,6 +218,7 @@ export function Partners() {
           </div>
         )}
       </div>
+      <AddPartnerModal open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   );
 }
